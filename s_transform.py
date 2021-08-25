@@ -1,4 +1,3 @@
-from typing import overload
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy as sp 
@@ -13,9 +12,9 @@ def test():
     #plt.plot(freq, power)
     #plt.show()
     beginning = time.time()
-    #specs1 = TimeFrequency(chirp, int(1/dt), 100, method='dtft').make_spectrogram()
+    #specs1 = STimeFrequency(chirp, int(1/dt), 100, method='dtft').make_spectrogram()
     #dtftTime = time.time()
-    specs2 = TimeFrequency(chirp, int(1/dt), 200, method='dst').make_spectrogram()
+    specs2 = STimeFrequency(chirp, int(1/dt), 200, fftmethod='numpy', method='dst').make_spectrogram()
     dstTime = time.time()
     #print('DTFT: ' + str(dtftTime - beginning))
     #print('DST: ' + str(dstTime - dtftTime))
@@ -75,9 +74,10 @@ class dftMethods:
         ms = np.arange(1, self.length+1, 1)
         js = np.arange(1, self.length+1, 1)
 
+        
         dftsCoeff = 1/self.length*np.sum(self.data*np.exp((1j*2*np.pi*(ks+ms)*n)/self.length))      
         coeff = np.sum(dftsCoeff*np.exp(-2*np.pi**2*ms**2/ks**2)*np.exp(1j*2*np.pi*ms*js/self.length))
-  
+       
         return coeff
     
     def get_freq(self):
@@ -110,9 +110,19 @@ class dftMethods:
         length_w_nyquest = int(length/2)                # Nyquest limit == 1/2 frequency length
         half_length = int(1/2*length_w_nyquest)         # fold frequency length one more time
         power = np.empty(half_length)              # empty data frame
-        for i in range(half_length):
-            power[i] = np.abs(self.get_S_coeff(i)*2, dtype=float)  # loop sum
-        freq = self.get_freq()
+
+        if self.fftmethod == 'py':
+            for i in range(half_length):
+                power[i] = np.abs(self.get_S_coeff(i)*2, dtype=float)  # loop sum
+            freq = self.get_freq()
+        elif self.fftmethod == 'numpy':
+            ks = np.arange(1, self.length+1, 1)             # shifted 1 to avoid 0 division
+            ms = np.arange(1, self.length+1, 1)
+            js = np.arange(1, self.length+1, 1)
+            dfts = np.fft.fft(self.data)
+            dsts = np.fft.fft(dfts*np.exp(-2*np.pi**2*ms**2/ks**2)*np.exp(1j*2*np.pi*ms*js/self.length))
+            power = dsts
+            freq = self.get_freq()
     
         return power, freq
 
@@ -145,7 +155,7 @@ class dftMethods:
 
         return power, freq
 
-class TimeFrequency:
+class STimeFrequency:
     '''Transform and Spectrogram class'''
 
     def __init__(self, data, sample_rate, L, overlap = None, fftmethod = 'py', method = 'dtft'):
