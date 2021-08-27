@@ -1,9 +1,12 @@
+import time
+#import random
+import warnings
+
 import numpy as np
 import matplotlib.pyplot as plt
-import scipy as sp 
-import warnings 
-import time
-from scipy import signal as sci_signal
+from scipy import signal as scisignal
+#from scipy import fft, ifft
+#from scipy.interpolate import interp1d
 
 def test():
     dt = 0.001
@@ -12,25 +15,26 @@ def test():
     #plt.plot(freq, power)
     #plt.show()
     beginning = time.time()
-    #specs1 = STimeFrequency(chirp, int(1/dt), 100, method='dtft').make_spectrogram()
-    #dtftTime = time.time()
-    specs2 = STimeFrequency(chirp, int(1/dt), 200, fftmethod='numpy', method='dst').make_spectrogram()
+    specs1 = TimeFrequency(chirp, int(1/dt), method='dtft', show=False, savefig=True).plot()
+    dtftTime = time.time()
+    specs2 = TimeFrequency(chirp, sample_rate=int(1/dt), method='dst', show=False, savefig=True).plot()
     dstTime = time.time()
-    #print('DTFT: ' + str(dtftTime - beginning))
-    #print('DST: ' + str(dstTime - dtftTime))
-    
-    return
+    print('DTFT: ' + str(dtftTime - beginning))
+    print('DST: ' + str(dstTime - dtftTime))
+        
+    return 
 
-class signal:   
+
+class signal: 
     '''Generate sample signals'''
 
     def chirp_signal(dt):
-        """Generate a chirp signal for testing 
+        '''Generate a chirp signal for testing 
         Input
                         dt              the sampling interval
         Output          
                         x               chirp signal 
-        """
+        '''
         t = np.arange(0,3,dt)
         f0 = 50
         f1 = 250
@@ -40,8 +44,11 @@ class signal:
 
         return x
 
+
 class dftMethods:
-    '''Distrete Fourier Transform class'''
+    '''Distrete Fourier Transform class
+    NOTE: could be removed and combined with class TimeFrequency
+    '''
 
     def __init__(self, data, sample_rate, fftmethod='numpy'):
         self.data = data
@@ -49,214 +56,163 @@ class dftMethods:
         self.fftmethod = fftmethod
         self.length = len(data)
 
-    def get_coeff(self, n):
-        '''Get the Fourier coefficients of a DFT
-        Input
-                        data                the time-domain data
-                        n                   the number of segments
-        Output
-                        dftCoeff               the Fourier coefficient of a DFT
-        '''
-        ks = np.arange(0, self.length, 1)
-        dftCoeff = np.sum(self.data*np.exp((1j*2*np.pi*ks*n)/self.length))/self.length       
+class TimeFrequency:
+    '''Time-Frequency Analysis Methods class'''
 
-        return dftCoeff
-
-    def get_S_coeff(self, n):
-        '''Get the Fourier coefficients of a S Transform
-        Input
-                        data                the time-domain data
-                        n                   the number of segments
-        Output
-                        coeff               the Fourier coefficient of a DFT
-        '''
-        ks = np.arange(1, self.length+1, 1)             # shifted 1 to avoid 0 division
-        ms = np.arange(1, self.length+1, 1)
-        js = np.arange(1, self.length+1, 1)
-
-        
-        dftsCoeff = 1/self.length*np.sum(self.data*np.exp((1j*2*np.pi*(ks+ms)*n)/self.length))      
-        coeff = np.sum(dftsCoeff*np.exp(-2*np.pi**2*ms**2/ks**2)*np.exp(1j*2*np.pi*ms*js/self.length))
-       
-        return coeff
-    
-    def get_freq(self):
-        '''Get the sampled frequency grid
-        variables
-                        length              length of the time-domain data          
-                        sample_rate         sample_rate, the inverse of sample interval
-        return 
-                        freq                the frequency array
-        '''
-        ks = np.linspace(0, int(self.length/2), int(self.length/2))     # frequency grid
-        freq = ks*self.sample_rate/self.length                          # scaled frequency grid
-
-        return freq
-
-    def dstpy(self):
-        '''Get the DST of imput data
-        variables
-                        data                time-domain signal 
-                        sample_rate         sample_rate, the inverse of sample interval
-        Output
-                        power               frequency-domain signal strength
-                        freq                frequency array
-                        time                time array
-        Associated functions
-                        get_freq
-                        get_time
-        '''
-        length = int(len(self.data))                    # full frequency length 
-        length_w_nyquest = int(length/2)                # Nyquest limit == 1/2 frequency length
-        half_length = int(1/2*length_w_nyquest)         # fold frequency length one more time
-        power = np.empty(half_length)              # empty data frame
-
-        if self.fftmethod == 'py':
-            for i in range(half_length):
-                power[i] = np.abs(self.get_S_coeff(i)*2, dtype=float)  # loop sum
-            freq = self.get_freq()
-        elif self.fftmethod == 'numpy':
-            ks = np.arange(1, self.length+1, 1)             # shifted 1 to avoid 0 division
-            ms = np.arange(1, self.length+1, 1)
-            js = np.arange(1, self.length+1, 1)
-            dfts = np.fft.fft(self.data)
-            dsts = np.fft.fft(dfts*np.exp(-2*np.pi**2*ms**2/ks**2)*np.exp(1j*2*np.pi*ms*js/self.length))
-            power = dsts
-            freq = self.get_freq()
-    
-        return power, freq
-
-    def dftpy(self):
-        '''Get the DFT of input data
-        variables
-                        data                time-domain signal 
-                        sample_rate         sample_rate, the inverse of sample interval
-        Output
-                        power               frequency-domain signal strength
-                        freq                frequency array
-        Associated functions
-                        get_freq
-        Note:
-                        two fftmethods avaliable - 'numpy' and 'py'
-                                                'numpy' ==> np.fft.fft (faster)
-                                                'py' ==> direct sum DFT (slower)
-        '''
-        length = int(len(self.data))                    # full frequency length 
-        length_w_nyquest = int(length/2)                # Nyquest limit == 1/2 frequency length
-        if self.fftmethod == 'numpy':                      # Numpy FFT
-            power = np.fft.fft(self.data)[:length_w_nyquest]
-            freq = np.fft.fftfreq(len(self.data), 1/self.sample_rate)[:length_w_nyquest]
-
-        elif self.fftmethod == 'py':                       # direct sum DFT
-            power = np.empty(length_w_nyquest)          # empty data frame
-            for i in range(length_w_nyquest):
-                power[i] = np.abs(self.get_coeff(i)*2, dtype=float)  # loop sum
-            freq = self.get_freq()
-
-        return power, freq
-
-class STimeFrequency:
-    '''Transform and Spectrogram class'''
-
-    def __init__(self, data, sample_rate, L, overlap = None, fftmethod = 'py', method = 'dtft'):
+    def __init__(self, ts, sample_rate=4096, frange=None, frate=1, overlap = None, method = 'dst', show=True, savefig=False):
         '''
         Input
-                        data                time-domain data
+                        ts                  time-domain data
                         sample_rate         sample_rate, the inverse of sample interval
                         L                   the data length included in each DFT
+                        frange              the frequency range
+                        frate               the frequency sample rate
                         overlap             the length of overlap between DFTs
                         fftmethod           fft/dft implimentation
-                        method              spectrogram method - dtft/dst
+                        method              spectrogram method - dtft/dst/dcst
         '''
-        self.data = data
+        self.ts = ts
         self.sample_rate = sample_rate
-        self.L = L
+        self.frange = frange
+        self.frate = frate
         self.overlap = overlap
-        self.fftmethod = fftmethod
         self.method = method
-        
-    def transform(self):
-        '''Generate S Transform sections using dft/fft
-        variables
-                        data                time-domain data
-                        sample_rate         sample_rate, the inverse of sample interval
-                        L                   the data length included in each DFT
-                        overlap             the length of overlap between DFTs
-        return 
-                        sections
-                        spec
-        '''
-        if self.overlap is None:
-            self.overlap = int(self.L/2)
-        sections = np.arange(0, len(self.data), self.L-self.overlap, dtype=int)
-        sections  = sections[sections + self.L < len(self.data)]
-        xns = np.empty(len(sections))       # fix array
-        xns = []
-        count = 0
-        if self.method == 'dtft':
-            for begin in sections:
-                # short term discrete fourier transform
-                ts_window, self.freq = dftMethods(self.data[begin:begin + self.L], self.sample_rate, fftmethod=self.fftmethod).dftpy() 
-                #xns[count] = ts_window         # fix array
-                xns.append(ts_window)
-                count+=1
-        elif self.method == 'dst':
-            for begin in sections:
-                # short term discrete fourier transform
-                ts_window, self.freq = dftMethods(self.data[begin:begin + self.L], self.sample_rate, fftmethod=self.fftmethod).dstpy() 
-                #xns[count] = ts_window         # fix array
-                xns.append(ts_window)
-                count+=1
-        else:
-            warnings.warn('unsupported method')
+        self.show = show
+        self.savefig = savefig
+        self.length = len(self.ts)
 
-        specX = np.array(xns).T
-        spec = 10*np.log10(specX)
-        assert spec.shape[1] == len(sections) 
-        
-        return sections, spec
-
-    def make_spectrogram(self):
-        '''Generate the spectrogram
-        variables
-                        data                time-domain data
-                        sample_rate         sample_rate, the inverse of sample interval
-        return 
-                        plt_spec            image specs
-        '''
-        data_interval = len(self.data)/self.sample_rate
-        self.sections, self.spec = self.transform()
-
-        plt.figure()
-        plt_spec = plt.imshow(self.spec, origin='lower')
-
-        # y axis
-        Nyticks = 10
-        freq = np.linspace(0, self.spec.shape[0], Nyticks, dtype=int)
+        if self.frange == None:
+            # use default frange
+            self.frange = [30, 500]
     
-        downsampled_freq_Hz =  np.empty(Nyticks)
-        counter = 0
-        for i in range(len(self.freq)):
-            if i%int(len(self.freq)/Nyticks) == 0:
-                downsampled_freq_Hz[counter] = "{:4.2f}".format(self.freq[i])
-                counter+=1
-        plt.yticks(freq, downsampled_freq_Hz)
-        plt.ylabel("Frequency (Hz)")
+    def _window(self, N, nleft=0, nright=0):
+        ''' *Planck* Window function
+        Imput
+                        N               the number of data points included in a window
+                        nleft           the number of data points to taper on the left
+                        nright          the number of data points to taper on the right
+        Return
+                        win             the normalized window
+        Note: Window scaling factor = 1, normalized
+        '''
+        from scipy.special import expit
 
-        # x axis 
-        Nxticks = 10
-        ts_spec = np.linspace(0,self.spec.shape[1],Nxticks)
-        ts_spec_sec  = ["{:4.2f}".format(i) for i in np.linspace(0,data_interval*self.sections[-1]/len(self.data),Nxticks)]
-        plt.xticks(ts_spec,ts_spec_sec)
-        plt.xlabel("Time (sec)")
+        win = np.ones(N)
+        if nleft:
+            win[0] *= 0
+            zleft = np.array([nleft * (1./k + 1./(k-nleft))
+                                for k in range(1, nleft)])
+            win[1:nleft] *= expit(-zleft)
+        if nright:
+            win[N-1] *= 0
+            zright = np.array([-nright * (1./(k-nright) + 1./k)
+                                for k in range(1, nright)])
+            win[N-nright:N-1] *= expit(-zright)
 
-        plt.title("Spectrogram L={} Spectrogram.shape={}".format(self.L,self.spec.shape))
-        plt.colorbar(use_gridspec=True)
-        plt.show()
-        #plt.savefig(str(self.method)+'_spectrogram.png')            #+str(time.time())
-        #plt.close()
+        return win
 
-        return plt_spec
+    def _window_normal(self, freq):
+        '''Gaussian Window function
+        Input 
+                        freq            the number of min frequency bins
+        Return
+                        win             the normalized gaussian window
+        Note: Window scaling factor = 1, normalized
+        '''
+        gauss = scisignal.gaussian(self.length,std=(freq)/(2*np.pi))
+        win = np.hstack((gauss,gauss))[self.length//2:self.length//2+self.length]
+
+        return win
+
+    def stransform(self):
+        '''The Stokewell Transform'''
+       
+        Nfreq = [int(self.frange[0]*self.length/self.sample_rate), int(self.frange[1]*self.length/self.sample_rate)]               # the number of data points for min and max frequencies
+        tsVal = np.copy(self.ts)            # copy ts values
+        power = np.zeros((int((Nfreq[1]-Nfreq[0])/self.frate)+1,self.length), dtype='c8')            #complex64 C
+        tsFFT = np.fft.fft(tsVal)
+        vec = np.hstack((tsFFT, tsFFT))
+        
+        if self.frange[0] == 0:
+            power = np.mean(tsVal)*np.ones(self.length)
+        else:
+            power[0] = np.fft.ifft(vec[Nfreq[0]:Nfreq[0]+self.length]*self._window_normal(Nfreq[0]))
+        for i in range(self.frate, (Nfreq[1]-Nfreq[0])+1, self.frate):
+            power[int(i/self.frate)] = np.fft.ifft(vec[Nfreq[0]+i:Nfreq[0]+i+self.length]*self._window_normal(Nfreq[0]+i))
+
+        return np.abs(power)
+
+    def get_freq_Hz(self, ks):
+        '''Get the frequency label in Hz
+        Input
+                        ks              the freqeuncy array
+        Output
+                        ksHz            the frequency array in Hz
+        ''' 
+        ksHz = ks*self.sample_rate/self.length
+        ksHz = [int(i) for i in ksHz]              #to be simplified
+          
+        return ksHz
+
+    def plot(self):
+        '''Generate the spectrogram
+        methods: dtft / dst / dcst
+        '''
+        if self.method == 'dtft':
+            f, t, Sxx = scisignal.spectrogram(
+                                self.ts, 
+                                self.sample_rate,
+                                nperseg=128,
+                                noverlap=64, 
+                                nfft=896, 
+                                scaling='spectrum'
+                            )
+           
+            plt.figure(figsize=(12,9))
+            plt.pcolor(t,f, Sxx, cmap ='jet')
+            plt.ylabel('Frequency [Hz]')
+            plt.xlabel('Time [sec]')
+            #plt.xlim(7.5,15)
+            plt.ylim(0,250)
+            plt.colorbar()
+
+        elif self.method == 'dst':
+
+            # s table
+            sTable = self.stransform()
+            # y axis
+            self.fscale = int(self.length/self.sample_rate)
+            y_sticksN = 10
+            ks = np.linspace(self.frange[0], self.frange[1]*self.fscale, y_sticksN)
+            ksHz = self.get_freq_Hz(ks)
+
+            # x axis
+            x_sticksN = 10
+            ts = np.linspace(0, sTable.shape[1], x_sticksN)
+            tsSec = ["{:4.2f}".format(i) for i in np.linspace(0, sTable.shape[1]/self.sample_rate, x_sticksN)]
+
+            extent=(0,sTable.shape[1], self.fscale*self.frange[0], self.fscale*self.frange[1])
+    
+            plt.figure(figsize=(12,9))
+            plt.imshow(sTable, origin='lower', extent=extent)
+            plt.xticks(ts,tsSec)
+            plt.yticks(ks,ksHz) 
+            plt.xlabel("Time (sec)")
+            plt.ylabel("Freq (Hz)")
+            plt.colorbar()
+        
+        elif self.method == 'dcst':
+            pass
+        else:
+            warnings.warn('Time-Freqeuncy method not supported.')
+
+        if self.show:
+            plt.show()
+        
+        if self.savefig:
+            plt.savefig('STransform'+str(time.time())+'.png')
+        
+        return
 
 if __name__ == '__main__':
     test()
