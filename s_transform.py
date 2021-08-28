@@ -125,7 +125,7 @@ class TimeFrequency:
         return win
 
     def stransform(self):
-        '''The Stokewell Transform'''
+        '''The Stockwell Transform'''
        
         Nfreq = [int(self.frange[0]*self.length/self.sample_rate), int(self.frange[1]*self.length/self.sample_rate)]               # the number of data points for min and max frequencies
         tsVal = np.copy(self.ts)            # copy ts values
