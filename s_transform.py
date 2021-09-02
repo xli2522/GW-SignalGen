@@ -24,7 +24,6 @@ def test():
         
     return 
 
-
 class signal: 
     '''Generate sample signals'''
 
@@ -43,7 +42,6 @@ class signal:
         fs = 1/dt
 
         return x
-
 
 class dftMethods:
     '''Distrete Fourier Transform class
@@ -210,7 +208,7 @@ class TimeFrequency:
             plt.show()
         
         if self.savefig:
-            plt.savefig('STransform'+str(time.time())+'.png')
+            plt.savefig(str(self.method)+str(time.time())+'.png')
         
         return
 
