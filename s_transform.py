@@ -15,12 +15,12 @@ def test():
     #plt.plot(freq, power)
     #plt.show()
     beginning = time.time()
-    specs1 = TimeFrequency(chirp, int(1/dt), method='dtft', show=False, savefig=True).plot()
-    dtftTime = time.time()
+    specs1 = TimeFrequency(chirp, int(1/dt), method='stft', show=False, savefig=True).plot()
+    stftTime = time.time()
     specs2 = TimeFrequency(chirp, sample_rate=int(1/dt), method='dst', show=False, savefig=True).plot()
     dstTime = time.time()
-    print('DTFT: ' + str(dtftTime - beginning))
-    print('DST: ' + str(dstTime - dtftTime))
+    print('STFT: ' + str(stftTime - beginning))
+    print('DST: ' + str(dstTime - stftTime))
         
     return 
 
@@ -67,7 +67,7 @@ class TimeFrequency:
                         frate               the frequency sample rate
                         overlap             the length of overlap between DFTs
                         fftmethod           fft/dft implimentation
-                        method              spectrogram method - dtft/dst/dcst
+                        method              spectrogram method - stft/dst/dcst
         '''
         self.ts = ts
         self.sample_rate = sample_rate
@@ -154,15 +154,15 @@ class TimeFrequency:
 
     def plot(self):
         '''Generate the spectrogram
-        methods: dtft / dst / dcst
+        methods: stft / dst / dcst
         '''
-        if self.method == 'dtft':
+        if self.method == 'stft':
             f, t, Sxx = scisignal.spectrogram(
                                 self.ts, 
                                 self.sample_rate,
                                 nperseg=128,
                                 noverlap=64, 
-                                nfft=896, 
+                                nfft=5000, 
                                 scaling='spectrum'
                             )
            
