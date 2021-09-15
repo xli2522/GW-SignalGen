@@ -11,13 +11,10 @@ from scipy import signal as scisignal
 def test():
     dt = 0.001
     chirp = signal.chirp_signal(dt)
-    #power, freq = dft(chirp, 100, fftmethod='py').dftpy()
-    #plt.plot(freq, power)
-    #plt.show()
     beginning = time.time()
     specs1 = TimeFrequency(chirp, int(1/dt), method='stft', show=False, savefig=True).plot()
     stftTime = time.time()
-    specs2 = TimeFrequency(chirp, sample_rate=int(1/dt), method='dst', show=False, savefig=True).plot()
+    specs2 = TimeFrequency(chirp, int(1/dt), method='dst', show=False, savefig=True).plot()
     dstTime = time.time()
     print('STFT: ' + str(stftTime - beginning))
     print('DST: ' + str(dstTime - stftTime))
@@ -57,7 +54,9 @@ class dftMethods:
 class TimeFrequency:
     '''Time-Frequency Analysis Methods class'''
 
-    def __init__(self, ts, sample_rate=4096, frange=None, frate=1, overlap = None, method = 'dst', show=True, savefig=False):
+    def __init__(self, ts, sample_rate=4096, frange=None, frate=1, overlap = None, 
+                                    nperseg=128, noverlap=64, nfft=2000, scaling='spectrum', 
+                                                        method = 'dst', show=True, savefig=False):
         '''
         Input
                         ts                  time-domain data
@@ -66,7 +65,10 @@ class TimeFrequency:
                         frange              the frequency range
                         frate               the frequency sample rate
                         overlap             the length of overlap between DFTs
-                        fftmethod           fft/dft implimentation
+                        nperseg
+                        noverlap
+                        nfft 
+                        scaling
                         method              spectrogram method - stft/dst/dcst
         '''
         self.ts = ts
@@ -74,6 +76,10 @@ class TimeFrequency:
         self.frange = frange
         self.frate = frate
         self.overlap = overlap
+        self.nperseg = nperseg
+        self.noverlap = noverlap
+        self.nfft = nfft
+        self.scaling = scaling
         self.method = method
         self.show = show
         self.savefig = savefig
@@ -160,10 +166,11 @@ class TimeFrequency:
             f, t, Sxx = scisignal.spectrogram(
                                 self.ts, 
                                 self.sample_rate,
-                                nperseg=128,
-                                noverlap=64, 
-                                nfft=5000, 
-                                scaling='spectrum'
+                                nperseg=self.nperseg,
+                                noverlap=self.noverlap, 
+                                nfft=self.nfft, 
+                                scaling=self.scaling,
+                                window=('tukey', 0.25)
                             )
            
             plt.figure(figsize=(12,9))
@@ -192,7 +199,7 @@ class TimeFrequency:
             extent=(0,sTable.shape[1], self.fscale*self.frange[0], self.fscale*self.frange[1])
     
             plt.figure(figsize=(12,9))
-            plt.imshow(sTable, origin='lower', extent=extent)
+            plt.imshow(sTable, origin='lower', extent=extent, aspect='auto')
             plt.xticks(ts,tsSec)
             plt.yticks(ks,ksHz) 
             plt.xlabel("Time (sec)")
