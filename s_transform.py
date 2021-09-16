@@ -12,9 +12,9 @@ def test():
     dt = 0.001
     chirp = signal.chirp_signal(dt)
     beginning = time.time()
-    specs1 = TimeFrequency(chirp, int(1/dt), method='stft', show=False, savefig=True).plot()
+    specs1 = TimeFrequency(chirp, int(1/dt), method='stft', show=True, savefig=False).plot()
     stftTime = time.time()
-    specs2 = TimeFrequency(chirp, int(1/dt), method='dst', show=False, savefig=True).plot()
+    specs2 = TimeFrequency(chirp, int(1/dt), method='dst', show=True, savefig=False).plot()
     dstTime = time.time()
     print('STFT: ' + str(stftTime - beginning))
     print('DST: ' + str(dstTime - stftTime))
@@ -35,7 +35,7 @@ class signal:
         f0 = 50
         f1 = 250
         t1 = 2
-        x = np.cos(2*np.pi*t*(f0 + (f1 - f0)*np.power(t, 2)/(3*t1**2)))
+        x = np.cos(2*np.pi*t*(f0 + (f1 - f0)*np.power(t, 4)/(3*t1**4)))
         fs = 1/dt
 
         return x
@@ -55,7 +55,7 @@ class TimeFrequency:
     '''Time-Frequency Analysis Methods class'''
 
     def __init__(self, ts, sample_rate=4096, frange=None, frate=1, overlap = None, 
-                                    nperseg=128, noverlap=64, nfft=2000, scaling='spectrum', 
+                                    nperseg=128, noverlap=64, nfft=800, scaling='spectrum', 
                                                         method = 'dst', show=True, savefig=False):
         '''
         Input
@@ -138,7 +138,7 @@ class TimeFrequency:
         vec = np.hstack((tsFFT, tsFFT))
         
         if self.frange[0] == 0:
-            power = np.mean(tsVal)*np.ones(self.length)
+            power[0] = np.mean(tsVal)*np.ones(self.length)
         else:
             power[0] = np.fft.ifft(vec[Nfreq[0]:Nfreq[0]+self.length]*self._window_normal(Nfreq[0]))
         for i in range(self.frate, (Nfreq[1]-Nfreq[0])+1, self.frate):
@@ -196,10 +196,11 @@ class TimeFrequency:
             ts = np.linspace(0, sTable.shape[1], x_sticksN)
             tsSec = ["{:4.2f}".format(i) for i in np.linspace(0, sTable.shape[1]/self.sample_rate, x_sticksN)]
 
-            extent=(0,sTable.shape[1], self.fscale*self.frange[0], self.fscale*self.frange[1])
+            extent=(0,sTable.shape[1], self.fscale*self.frange[0], self.fscale*self.frange[1])      # causes top = bottom plt.imshow() error
     
             plt.figure(figsize=(12,9))
-            plt.imshow(sTable, origin='lower', extent=extent, aspect='auto')
+            #plt.imshow(sTable, origin='lower', extent=extent, aspect='auto')           # will be fixed
+            plt.imshow(sTable, origin='lower', aspect='auto')
             plt.xticks(ts,tsSec)
             plt.yticks(ks,ksHz) 
             plt.xlabel("Time (sec)")
